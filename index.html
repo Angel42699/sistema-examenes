@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Exámenes Unificado</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Firebase SDK para IPs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+    <!-- ========== PANTALLA DE VERIFICACIÓN DE IP (Firebase) ========== -->
+    <div id="ip-check-screen" class="screen active">
+        <div class="login-container">
+            <div class="login-card">
+                <h1>🌐 Verificando Acceso</h1>
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Verificando tu dirección IP...</p>
+                </div>
+                <div class="security-info">
+                    <p>🔒 <strong>Sistema Seguro:</strong> Control de acceso por IP</p>
+                    <p id="ip-status">Estado: Verificando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PANTALLA DE ACCESO GLOBAL ========== -->
+    <div id="acceso-global-screen" class="screen">
+        <div class="login-container">
+            <div class="login-card">
+                <h1>🔒 Acceso al Sistema</h1>
+                <p class="subtitle">Ingrese la contraseña global para continuar</p>
+                
+                <form id="acceso-global-form">
+                    <div class="form-group">
+                        <label for="password-global">Contraseña Global:</label>
+                        <input type="password" id="password-global" required 
+                               placeholder="Ingrese la contraseña de acceso">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Acceder al Sistema</button>
+                </form>
+                
+                <div class="security-info">
+                    <p>🔐 <strong>Modo Seguridad:</strong> <span id="modo-seguridad-actual">Registro</span></p>
+                    <p>🌐 <strong>Acceso:</strong> Solo usuarios autorizados</p>
+                    <p id="current-ip-display">IP: Verificando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PANTALLA DE LOGIN ========== -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <div class="login-card">
+                <h1>Sistema de Exámenes Unificado</h1>
+                <p class="subtitle">Ingrese sus credenciales</p>
+                
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">Usuario:</label>
+                        <input type="text" id="username" required placeholder="Ingrese su usuario">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Contraseña:</label>
+                        <input type="password" id="password" required placeholder="Ingrese su contraseña">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                    <!-- Botón de registro agregado -->
+                    <button type="button" id="go-to-register" class="btn btn-outline-primary" style="margin-top: 10px; width: 100%;">
+                        📝 Crear Nueva Cuenta
+                    </button>
+                </form>
+                
+                <div class="admin-access">
+                    <button id="go-to-admin" class="btn btn-secondary">Acceso Administrativo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PANEL ADMINISTRATIVO UNIFICADO ========== -->
+    <div id="admin-panel" class="screen">
+        <div class="admin-container">
+            <header>
+                <h1>🛠️ Panel de Control Administrativo</h1>
+                <div class="admin-nav">
+                    <span id="admin-user">Administrador</span>
+                    <button id="admin-logout" class="btn btn-secondary">Cerrar Sesión</button>
+                </div>
+            </header>
+            
+            <div class="admin-content">
+                <!-- ========== ESTADÍSTICAS UNIFICADAS ========== -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>📊 Total Preguntas</h3>
+                        <span id="total-questions">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>👥 Total Usuarios</h3>
+                        <span id="total-users">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>📝 Exámenes Realizados</h3>
+                        <span id="total-exams">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🌐 Sesiones Activas</h3>
+                        <span id="total-ips">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🌐 Usuarios Globales</h3>
+                        <span id="global-users">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💻 Usuarios Locales</h3>
+                        <span id="local-users">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🛡️ IPs Bloqueadas</h3>
+                        <span id="blocked-ips-count">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>☁️ Sincronización</h3>
+                        <span id="cloud-sync-status">✅ Activa</span>
+                    </div>
+                </div>
+
+                <!-- ========== CONFIGURACIÓN DE SEGURIDAD UNIFICADA ========== -->
+                <div class="security-controls">
+                    <h2>🔒 Configuración de Seguridad</h2>
+                    <div class="control-group">
+                        <label>Modo de Seguridad:</label>
+                        <div class="mode-buttons">
+                            <button id="set-mode-registro" class="btn btn-primary">Modo Registro</button>
+                            <button id="set-mode-bloqueo" class="btn btn-secondary">Modo Bloqueo</button>
+                        </div>
+                        <p class="mode-info">Modo actual: <strong id="current-mode">Registro</strong></p>
+                    </div>
+                    
+                    <!-- Control de Acceso por IP (Firebase) -->
+                    <div class="control-group">
+                        <h3>🛡️ Control de Acceso por IP</h3>
+                        <div class="ip-controls">
+                            <div class="form-group">
+                                <label for="ip-to-manage">Dirección IP:</label>
+                                <input type="text" id="ip-to-manage" placeholder="Ej: 192.168.1.100">
+                            </div>
+                            <div class="ip-buttons">
+                                <button id="allow-ip" class="btn btn-success">✅ Permitir IP</button>
+                                <button id="block-ip" class="btn btn-danger">🚫 Bloquear IP</button>
+                                <button id="refresh-ip-list" class="btn btn-info">🔄 Actualizar Lista</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== ACCIONES ADMINISTRATIVAS UNIFICADAS ========== -->
+                <div class="admin-actions">
+                    <h2>⚙️ Gestión del Sistema</h2>
+                    <div class="action-buttons">
+                        <button id="manage-questions" class="btn btn-primary">📋 Gestionar Preguntas</button>
+                        <button id="view-results" class="btn btn-primary">📊 Ver Resultados</button>
+                        <button id="manage-ips" class="btn btn-primary">🌐 Gestionar Sesiones</button>
+                        <button id="manage-users" class="btn btn-primary">👥 Gestionar Usuarios</button>
+                        <button id="manage-ip-security" class="btn btn-warning">🛡️ Gestionar IPs</button>
+                        <button id="sync-cloud" class="btn btn-info">☁️ Sincronizar Nube</button>
+                        <button id="clear-all-data" class="btn btn-danger">🗑️ Limpiar Todo</button>
+                    </div>
+                </div>
+
+                <!-- ========== GESTIÓN DE PREGUNTAS ========== -->
+                <div id="questions-management" class="management-section">
+                    <h2>📋 Gestión de Preguntas</h2>
+                    <div class="section-actions">
+                        <button id="add-question" class="btn btn-success">➕ Agregar Pregunta</button>
+                        <button id="export-questions" class="btn btn-secondary">📤 Exportar Preguntas</button>
+                    </div>
+                    <div class="questions-list" id="questions-list">
+                        <!-- Las preguntas se cargarán aquí -->
+                    </div>
+                </div>
+
+                <!-- ========== GESTIÓN DE SESIONES ========== -->
+                <div id="ips-management" class="management-section">
+                    <h2>🌐 Gestión de Sesiones</h2>
+                    <div class="section-actions">
+                        <button id="refresh-ips" class="btn btn-primary">🔄 Actualizar Lista</button>
+                        <button id="clear-ips" class="btn btn-danger">🗑️ Limpiar Sesiones</button>
+                    </div>
+                    <div class="ips-list" id="ips-list">
+                        <!-- Las sesiones se cargarán aquí -->
+                    </div>
+                </div>
+
+                <!-- ========== GESTIÓN DE IPS BLOQUEADAS/PERMITIDAS (Firebase) ========== -->
+                <div id="ip-security-management" class="management-section">
+                    <h2>🛡️ Control de IPs</h2>
+                    <div class="ip-lists">
+                        <div class="ip-list-section">
+                            <h3>✅ IPs Permitidas</h3>
+                            <div class="allowed-ips-list" id="allowed-ips-list">
+                                <!-- IPs permitidas se cargarán aquí -->
+                            </div>
+                        </div>
+                        <div class="ip-list-section">
+                            <h3>🚫 IPs Bloqueadas</h3>
+                            <div class="blocked-ips-list" id="blocked-ips-list">
+                                <!-- IPs bloqueadas se cargarán aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== RESULTADOS ========== -->
+                <div id="results-management" class="management-section">
+                    <h2>📊 Resultados de Exámenes</h2>
+                    <div class="results-list" id="results-list">
+                        <!-- Los resultados se cargarán aquí -->
+                    </div>
+                </div>
+
+                <!-- ========== GESTIÓN DE USUARIOS (JSONBin.io) ========== -->
+                <div id="users-management" class="management-section">
+                    <h2>👥 Gestión de Usuarios</h2>
+                    <div class="section-actions">
+                        <button id="add-user" class="btn btn-success">➕ Agregar Usuario</button>
+                        <button id="export-users" class="btn btn-info">📤 Exportar Usuarios</button>
+                    </div>
+                    <div class="users-list" id="users-list">
+                        <!-- Los usuarios se cargarán aquí -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== CUESTIONARIO PARA USUARIOS ========== -->
+    <div id="quiz-screen" class="screen">
+        <div class="container">
+            <header>
+                <div class="header-top">
+                    <h1>📝 Examen de Conocimientos</h1>
+                    <div class="user-info">
+                        <span id="current-user">Usuario</span>
+                        <!-- Elemento para mostrar tipo de usuario -->
+                        <span id="user-type" class="user-type-badge" style="display: none;"></span>
+                        <button id="user-logout" class="btn btn-secondary">Cerrar Sesión</button>
+                    </div>
+                </div>
+                <div class="progress">
+                    <span id="progress-text">Página 1 de 7 - Progreso: 0%</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="quiz-info">
+                    <span>🔒 Sesión activa</span>
+                    <span id="session-timer">⏱️ Tiempo restante: --:--</span>
+                    <div class="speech-controls">
+                        <button id="speech-play" class="btn btn-info">🔊 Iniciar Lectura</button>
+                        <button id="speech-pause" class="btn btn-info" disabled>⏸️ Pausar</button>
+                        <button id="speech-resume" class="btn btn-info" disabled>▶️ Continuar</button>
+                        <button id="speech-stop" class="btn btn-info" disabled>⏹️ Detener</button>
+                    </div>
+                </div>
+            </header>
+
+            <main>
+                <div class="question-container">
+                    <div class="page-header">
+                        <h2 id="page-title">Página 1 - Preguntas 1 a 50</h2>
+                        <div class="page-progress">
+                            <span id="page-progress-text">Respondidas: 0/50</span>
+                        </div>
+                    </div>
+                    
+                    <div class="questions-grid" id="questions-grid">
+                        <!-- Las 50 preguntas se cargarán aquí -->
+                    </div>
+
+                    <div class="navigation">
+                        <button id="prev-page" class="btn btn-secondary">⬅️ Página Anterior</button>
+                        <span class="page-info" id="page-info">Página 1 de 7</span>
+                        <button id="next-page" class="btn btn-primary">Siguiente Página ➡️</button>
+                        <button id="finalizar-examen" class="btn btn-success" style="display: none;">✅ Finalizar Examen</button>
+                    </div>
+                </div>
+
+                <div id="results-container" class="results-container" style="display: none;">
+                    <h2>🎉 Resultados del Examen</h2>
+                    <div class="score">
+                        <span id="score-text">0/303 correctas</span>
+                        <div class="percentage" id="percentage">0%</div>
+                    </div>
+                    <div class="result-details">
+                        <div class="result-stat">
+                            <span class="stat-label">Preguntas respondidas:</span>
+                            <span id="answered-count">0</span>
+                        </div>
+                        <div class="result-stat">
+                            <span class="stat-label">Preguntas correctas:</span>
+                            <span id="correct-count">0</span>
+                        </div>
+                        <div class="result-stat">
+                            <span class="stat-label">Efectividad:</span>
+                            <span id="effectiveness">0%</span>
+                        </div>
+                    </div>
+                    <div class="result-actions">
+                        <button id="restart-btn" class="btn btn-primary">🔄 Realizar otro examen</button>
+                        <button id="back-to-menu" class="btn btn-secondary">📋 Volver al Menú</button>
+                        <button id="view-details" class="btn btn-info">📊 Ver Detalles</button>
+                    </div>
+                </div>
+
+                <!-- Detalles de resultados -->
+                <div id="results-details" class="results-details" style="display: none;">
+                    <h2>📊 Detalles del Examen</h2>
+                    <div class="details-list" id="details-list">
+                        <!-- Los detalles se cargarán aquí -->
+                    </div>
+                    <button id="back-to-results" class="btn btn-secondary">⬅️ Volver a Resultados</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ========== MODALES ========== -->
+
+    <!-- Modal para agregar/editar preguntas -->
+    <div id="question-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Agregar Nueva Pregunta</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="question-form">
+                    <div class="form-group">
+                        <label for="modal-pregunta">Número de Pregunta:</label>
+                        <input type="number" id="modal-pregunta" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-enunciado">Enunciado:</label>
+                        <textarea id="modal-enunciado" required rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-conector">Conector:</label>
+                        <input type="text" id="modal-conector" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Opciones:</label>
+                        <div class="options-inputs">
+                            <input type="text" id="modal-opcion-a" placeholder="Opción A" required>
+                            <input type="text" id="modal-opcion-b" placeholder="Opción B" required>
+                            <input type="text" id="modal-opcion-c" placeholder="Opción C" required>
+                            <input type="text" id="modal-opcion-d" placeholder="Opción D" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-respuesta">Respuesta Correcta:</label>
+                        <select id="modal-respuesta" required>
+                            <option value="">Seleccione la respuesta correcta</option>
+                            <option value="A">Opción A</option>
+                            <option value="B">Opción B</option>
+                            <option value="C">Opción C</option>
+                            <option value="D">Opción D</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="btn btn-secondary">Cancelar</button>
+                <button id="modal-save" class="btn btn-primary">Guardar Pregunta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar usuarios MEJORADO -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="user-modal-title">Agregar Nuevo Usuario</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="user-form">
+                    <div class="form-group">
+                        <label for="new-username">Usuario:</label>
+                        <input type="text" id="new-username" required placeholder="Ingrese el nombre de usuario">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">Contraseña:</label>
+                        <input type="password" id="new-password" required placeholder="Ingrese la contraseña">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-name">Nombre completo:</label>
+                        <input type="text" id="new-name" required placeholder="Ingrese el nombre completo">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-email">Email:</label>
+                        <input type="email" id="new-email" required placeholder="Ingrese el email">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-role">Rol:</label>
+                        <select id="new-role" required>
+                            <option value="user">Usuario Normal</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <!-- Sección de tipo de usuario -->
+                    <div class="form-group" id="user-type-radio">
+                        <label><strong>Tipo de Usuario:</strong></label>
+                        <div class="radio-group">
+                            <label style="display: block; margin: 10px 0; padding: 10px; border: 2px solid #28a745; border-radius: 5px; background: #f8fff9;">
+                                <input type="radio" name="user-type" id="global-user" value="global" checked>
+                                <strong>🌐 Usuario Global</strong><br>
+                                <small style="color: #666;">Disponible en todos los dispositivos</small>
+                            </label>
+                            <label style="display: block; margin: 10px 0; padding: 10px; border: 2px solid #6c757d; border-radius: 5px; background: #f8f9fa;">
+                                <input type="radio" name="user-type" id="local-user" value="local">
+                                <strong>💻 Usuario Local</strong><br>
+                                <small style="color: #666;">Solo disponible en este dispositivo</small>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary close-user-modal">Cancelar</button>
+                <button id="save-user" class="btn btn-primary">Guardar Usuario</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Registro Público -->
+    <div id="registration-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 Registro de Nuevo Usuario</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="registration-form">
+                    <div class="form-group">
+                        <label for="reg-username">Usuario:</label>
+                        <input type="text" id="reg-username" class="form-control" 
+                               placeholder="Ingrese su usuario" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Contraseña:</label>
+                        <input type="password" id="reg-password" class="form-control" 
+                               placeholder="Ingrese su contraseña" required minlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-confirm-password">Confirmar Contraseña:</label>
+                        <input type="password" id="reg-confirm-password" class="form-control" 
+                               placeholder="Confirme su contraseña" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-name">Nombre Completo:</label>
+                        <input type="text" id="reg-name" class="form-control" 
+                               placeholder="Ingrese su nombre completo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email:</label>
+                        <input type="email" id="reg-email" class="form-control" 
+                               placeholder="Ingrese su email" required>
+                    </div>
+                    <div class="form-group">
+                        <label><strong>Tipo de Usuario:</strong></label>
+                        <div class="radio-group">
+                            <label style="display: block; margin: 10px 0; padding: 10px; border: 2px solid #28a745; border-radius: 5px; background: #f8fff9;">
+                                <input type="radio" name="reg-user-type" id="reg-global-user" value="global" checked>
+                                <strong>🌐 Usuario Global</strong><br>
+                                <small style="color: #666;">Disponible en todos los dispositivos</small>
+                            </label>
+                            <label style="display: block; margin: 10px 0; padding: 10px; border: 2px solid #6c757d; border-radius: 5px; background: #f8f9fa;">
+                                <input type="radio" name="reg-user-type" id="reg-local-user" value="local">
+                                <strong>💻 Usuario Local</strong><br>
+                                <small style="color: #666;">Solo disponible en este dispositivo</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success">📝 Registrarse</button>
+                        <button type="button" id="cancel-registration" class="btn btn-secondary">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SCRIPTS UNIFICADOS ========== -->
+    <!-- Configuración Firebase -->
+    <script src="firebase-config.js"></script>
+    <!-- Sistema de seguridad de IPs -->
+    <script src="ip-security.js"></script>
+    <!-- Preguntas del examen -->
+    <script src="questions.js"></script>
+    <!-- Gestión de usuarios -->
+    <script src="users-manager.js"></script>
+    <!-- Sistema de registro -->
+    <script src="registration-system.js"></script>
+    <!-- Sincronización con JSONBin.io -->
+    <script src="cloud-sync.js"></script>
+    <!-- Sistema principal unificado -->
+    <script src="app.js"></script>
+</body>
+</html>
